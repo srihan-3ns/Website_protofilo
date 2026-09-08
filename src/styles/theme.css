@@ -1,0 +1,144 @@
+/* Design Tokens & Theme Variables */
+:root {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+  /* USER SPECIFIED DESIGN TOKENS */
+  --bg-primary: #080A0D;       /* Background: Main page */
+  --bg-surface: #11151B;       /* Surface: Cards */
+  --bg-card: #11151B;          /* Surface: Cards */
+  --bg-secondary: #11151B;     /* Secondary Surface */
+  --bg-tertiary: #171D25;      /* Nested inputs & subtle panels */
+  --bg-card-hover: #18202A;    /* Hover surface */
+
+  /* Exact Brand & State Tokens */
+  --brand-gold: #F1B93E;       /* Brand Gold: Brand / primary CTA */
+  --brand-gold-hover: #dfa62b;
+  --learning-blue: #4B8DFF;    /* Learning Blue: Read / progress */
+  --learning-blue-hover: #377cf0;
+  --success-green: #5BD39C;    /* Success Green: Success states */
+  --success-green-hover: #4ac28b;
+
+  /* Typography Tokens */
+  --text-primary: #F4F7FA;     /* Primary Text: Headings */
+  --text-main: #F4F7FA;        /* Primary Text */
+  --text-muted: #89929D;       /* Muted Text: Secondary text */
+  --text-subtle: #6c7682;      /* Deep secondary */
+
+  /* Subtle Borders */
+  --border-color: rgba(244, 247, 250, 0.08); /* Rounded cards with subtle borders */
+  --border-subtle: rgba(244, 247, 250, 0.05);
+  --border-color-glow: rgba(241, 185, 62, 0.35); /* Subtle gold glow */
+  --border-blue-glow: rgba(75, 141, 255, 0.35);
+
+  /* Primary Accent Aliases */
+  --accent-primary: #F1B93E;    /* Brand Gold */
+  --accent-primary-hover: #dfa62b;
+  --accent-learning: #4B8DFF;   /* Learning Blue */
+  --accent-success: #5BD39C;    /* Success Green */
+  --accent-warning: #F1B93E;    /* Brand Gold */
+  --accent-danger: #EF5350;     /* Accessible Red */
+  --accent-cyan: #4B8DFF;       /* Blue */
+
+  /* Gradients */
+  --grad-primary: linear-gradient(135deg, #F1B93E 0%, #ffcd68 100%);
+  --grad-gold: linear-gradient(135deg, #F1B93E 0%, #e5a727 100%);
+  --grad-learning: linear-gradient(135deg, #4B8DFF 0%, #6ba2ff 100%);
+  --grad-success: linear-gradient(135deg, #5BD39C 0%, #48c28a 100%);
+  --grad-dark-card: linear-gradient(180deg, #151A22 0%, #11151B 100%);
+  --grad-hero: radial-gradient(circle at 50% -10%, rgba(241, 185, 62, 0.08), transparent 60%), radial-gradient(circle at 80% 20%, rgba(75, 141, 255, 0.06), transparent 50%);
+
+  /* Shadows & Effects */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 30px -6px rgba(0, 0, 0, 0.6);
+  --shadow-gold: 0 4px 18px rgba(241, 185, 62, 0.28);
+  --shadow-blue: 0 4px 18px rgba(75, 141, 255, 0.28);
+
+  /* Radii for Rounded Cards */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;           /* Rounded cards with subtle borders */
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Light Theme Variables */
+[data-theme="light"] {
+  --bg-primary: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-secondary: #F1F5F9;
+  --bg-tertiary: #E2E8F0;
+  --bg-card-hover: #F8FAFC;
+
+  --text-primary: #0F172A;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --text-subtle: #94A3B8;
+
+  --border-color: rgba(15, 23, 42, 0.08);
+  --border-subtle: rgba(15, 23, 42, 0.05);
+
+  --brand-gold: #D99B16;
+  --brand-gold-hover: #C5890C;
+  --learning-blue: #2563EB;
+  --learning-blue-hover: #1D4ED8;
+  --success-green: #059669;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 25px -4px rgba(0, 0, 0, 0.12);
+  --shadow-gold: 0 4px 14px rgba(217, 155, 22, 0.25);
+  --shadow-blue: 0 4px 14px rgba(37, 99, 235, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  line-height: 1.5;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Accessible Focus States */
+:focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 3px;
+}
+
+button:focus-visible, 
+a:focus-visible, 
+input:focus-visible, 
+select:focus-visible, 
+textarea:focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 2px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-gold);
+}
