@@ -13,24 +13,19 @@ import {
   CheckCircle, 
   Star, 
   Play, 
-  GraduationCap,
-  Send,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Mail,
-  MapPin,
-  Clock,
+  Send, 
+  CheckCircle2, 
+  ChevronDown, 
+  ChevronUp, 
+  Mail, 
+  MapPin, 
+  Clock, 
   Layers,
-  Code,
-  Terminal,
-  Cpu,
-  Target,
-  Award
+  Terminal 
 } from 'lucide-react';
 
-export const PublicExperience = ({ isApplyModalOpen, setIsApplyModalOpen, isContactModalOpen, setIsContactModalOpen }) => {
-  const { courses, setCurrentExperience, setCurrentRole, submitContactInquiry } = useApp();
+export const PublicExperience = ({ isApplyModalOpen, setIsApplyModalOpen, _isContactModalOpen, setIsContactModalOpen }) => {
+  const { courses, submitContactInquiry } = useApp();
   const [selectedCourseForApp, setSelectedCourseForApp] = useState(null);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState(null);
 
@@ -680,13 +675,13 @@ export const PublicExperience = ({ isApplyModalOpen, setIsApplyModalOpen, isCont
 
             <div style={{ margin: '1rem 0' }}>
               <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Syllabus & Included Modules</h4>
-              {selectedCourseDetail.modules.map((mod) => (
+              {(selectedCourseDetail?.modules || []).map((mod) => (
                 <div key={mod.id} className="glass-panel" style={{ padding: '1rem', marginBottom: '0.75rem' }}>
                   <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>
                     {mod.title}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    {mod.lessons.map(les => (
+                    {(mod?.lessons || []).map(les => (
                       <div key={les.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <Play size={12} color="var(--accent-primary)" /> {les.title}

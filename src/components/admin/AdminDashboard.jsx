@@ -16,21 +16,12 @@ import {
   CheckCircle2, 
   XCircle, 
   Clock, 
-  ShieldCheck, 
   Activity, 
   Download, 
   Lock, 
-  MessageSquare,
-  Sparkles,
   UserPlus,
   Send,
-  Eye,
-  Check,
-  AlertCircle,
-  TrendingUp,
-  Cpu,
-  Mail,
-  ExternalLink
+  Mail
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
@@ -907,17 +898,17 @@ export const AdminDashboard = () => {
 
           {/* Modules & Lessons Hierarchy */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {selectedContentCourse?.modules.map((mod, modIdx) => (
+            {(selectedContentCourse?.modules || []).map((mod) => (
               <div key={mod.id} className="glass-panel" style={{ padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-primary)' }}>
                     {mod.title}
                   </h3>
-                  <span className="badge badge-indigo">{mod.lessons.length} Learning Items</span>
+                  <span className="badge badge-indigo">{(mod?.lessons || []).length} Learning Items</span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {mod.lessons.map((les, lesIdx) => (
+                  {(mod?.lessons || []).map((les) => (
                     <div key={les.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{les.title}</div>

@@ -11,18 +11,11 @@ import {
   Sparkles, 
   BookOpen, 
   Users, 
-  Link as LinkIcon,
-  MessageSquare,
-  Bell,
-  User,
-  Activity,
-  Layers,
-  Award,
-  ExternalLink,
-  ChevronRight,
-  TrendingUp,
-  Mail,
-  GraduationCap
+  Bell, 
+  User, 
+  Activity, 
+  ChevronRight, 
+  Mail 
 } from 'lucide-react';
 
 export const LecturerDashboard = () => {
@@ -32,16 +25,15 @@ export const LecturerDashboard = () => {
     announcements,
     answerDoubt, 
     publishLesson,
-    addAnnouncement,
-    completedLessons
+    addAnnouncement
   } = useApp();
+
+  const safeCourses = Array.isArray(courses) ? courses : [];
+  const safeDoubts = Array.isArray(doubts) ? doubts : [];
+  const safeAnnouncements = Array.isArray(announcements) ? announcements : [];
 
   // EXACT REQUESTED TABS: Overview | My Classes | Upload | Announcements | Doubts | Students | Profile
   const [activeTab, setActiveTab] = useState('OVERVIEW'); // 'OVERVIEW' | 'CLASSES' | 'UPLOAD' | 'ANNOUNCEMENTS' | 'DOUBTS' | 'STUDENTS' | 'PROFILE'
-  
-  // Selected course for publisher or doubts
-  const [selectedCourseId, setSelectedCourseId] = useState(courses[0]?.id || 'course-101');
-  const selectedCourse = courses.find(c => c.id === selectedCourseId) || courses[0];
 
   // Doubt answer inline state
   const [activeDoubtToAnswer, setActiveDoubtToAnswer] = useState(null);
@@ -49,7 +41,7 @@ export const LecturerDashboard = () => {
 
   // Announcement Form State
   const [ancForm, setAncForm] = useState({
-    courseId: courses[0]?.id || 'course-101',
+    courseId: safeCourses[0]?.id || 'course-101',
     title: '',
     content: ''
   });
@@ -57,7 +49,7 @@ export const LecturerDashboard = () => {
 
   // Publish / Upload Form State
   const [uploadForm, setUploadForm] = useState({
-    courseId: courses[0]?.id || 'course-101',
+    courseId: safeCourses[0]?.id || 'course-101',
     moduleTitle: 'Module 1: Foundations & Architecture',
     title: '',
     duration: '22 min',
@@ -78,17 +70,8 @@ export const LecturerDashboard = () => {
     { id: 'std-4', name: 'Marcus Vance', email: 'm.vance@example.com', course: 'Full-Stack Modern AI Web Engineering', progress: 25, lastActive: 'Sep 06', doubtsCount: 0 }
   ]);
 
-  const pendingDoubts = doubts.filter(d => d.status === 'Pending');
-  const resolvedDoubts = doubts.filter(d => d.status === 'Resolved');
-
-  const handleAnswerSubmit = (e, doubtId) => {
-    e.preventDefault();
-    if (!replyText.trim()) return;
-
-    answerDoubt(doubtId, replyText);
-    setActiveDoubtToAnswer(null);
-    setReplyText('');
-  };
+  const pendingDoubts = safeDoubts.filter(d => d.status === 'Pending');
+  const resolvedDoubts = safeDoubts.filter(d => d.status === 'Resolved');
 
   const handleAnnouncementSubmit = (e) => {
     e.preventDefault();
@@ -187,7 +170,7 @@ export const LecturerDashboard = () => {
           className={`exp-tab ${activeTab === 'ANNOUNCEMENTS' ? 'active' : ''}`}
           onClick={() => setActiveTab('ANNOUNCEMENTS')}
         >
-          <Bell size={15} /> Announcements ({announcements ? announcements.length : 0})
+          <Bell size={15} /> Announcements ({safeAnnouncements.length})
         </button>
 
         <button 
@@ -353,7 +336,7 @@ export const LecturerDashboard = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {courses.map(c => (
+            {safeCourses.map(c => (
               <div key={c.id} className="glass-panel" style={{ padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div>
@@ -362,17 +345,17 @@ export const LecturerDashboard = () => {
                       Category: {c.category} • Enrolled Learners: {c.enrolledCount}
                     </div>
                   </div>
-                  <span className="badge badge-emerald">{c.modules.reduce((acc, m) => acc + m.lessons.length, 0)} Total Lessons</span>
+                  <span className="badge badge-emerald">{(c.modules || []).reduce((acc, m) => acc + (m?.lessons?.length || 0), 0)} Total Lessons</span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {c.modules.map(mod => (
+                  {(c.modules || []).map(mod => (
                     <div key={mod.id} style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
                       <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--accent-primary)', marginBottom: '0.5rem' }}>
                         {mod.title}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        {mod.lessons.map(les => (
+                        {(mod.lessons || []).map(les => (
                           <div key={les.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '0.35rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                               <Video size={14} color="var(--accent-primary)" /> {les.title}

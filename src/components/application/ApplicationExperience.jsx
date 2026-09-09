@@ -10,8 +10,6 @@ import {
   ArrowRight, 
   Sparkles,
   User,
-  BookOpen,
-  Calendar,
   ShieldCheck
 } from 'lucide-react';
 
@@ -24,15 +22,18 @@ export const ApplicationExperience = () => {
     setCurrentRole 
   } = useApp();
 
-  const [searchInput, setSearchInput] = useState(userAppTrackingCode);
-  const [selectedAppCode, setSelectedAppCode] = useState(userAppTrackingCode);
+  const safeApps = Array.isArray(applications) ? applications : [];
+  const [searchInput, setSearchInput] = useState(userAppTrackingCode || 'APP-9081');
+  const [selectedAppCode, setSelectedAppCode] = useState(userAppTrackingCode || 'APP-9081');
 
-  const activeApp = applications.find(a => a.id.toLowerCase() === selectedAppCode.toLowerCase()) || applications[0];
+  const safeCode = String(selectedAppCode || 'APP-9081').toLowerCase();
+  const activeApp = safeApps.find(a => a?.id && a.id.toLowerCase() === safeCode) || safeApps[0] || null;
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (!searchInput) return;
-    const found = applications.find(a => a.id.toLowerCase() === searchInput.trim().toLowerCase());
+    const searchTarget = searchInput.trim().toLowerCase();
+    const found = safeApps.find(a => a?.id && a.id.toLowerCase() === searchTarget);
     if (found) {
       setSelectedAppCode(found.id);
       setUserAppTrackingCode(found.id);
@@ -89,7 +90,7 @@ export const ApplicationExperience = () => {
       {/* QUICK PRESET SELECTOR FOR DEMO */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Demo Samples:</span>
-        {applications.map(app => (
+        {safeApps.map(app => (
           <button 
             key={app.id} 
             className={`btn btn-sm ${app.id === activeApp?.id ? 'btn-primary' : 'btn-secondary'}`}

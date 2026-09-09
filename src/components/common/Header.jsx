@@ -3,23 +3,14 @@ import { useApp } from '../../context/AppContext';
 import { 
   Globe, 
   FileText, 
-  GraduationCap, 
   Sun, 
   Moon, 
   RotateCcw,
   Sparkles,
   LogIn,
   LogOut,
-  User,
-  ShieldCheck,
   Rocket,
-  CheckCircle2,
-  ExternalLink,
-  Cpu,
-  Layers,
-  HelpCircle,
-  Clock,
-  Download
+  CheckCircle2
 } from 'lucide-react';
 
 export const Header = ({ onOpenApplyModal, onOpenContactModal }) => {
@@ -49,87 +40,6 @@ export const Header = ({ onOpenApplyModal, onOpenContactModal }) => {
       if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   };
-
-  // 10-STEP BUILD ORDER LIFECYCLE HANDLERS
-  const buildOrderSteps = [
-    { 
-      id: 1, 
-      label: '1. Public website', 
-      action: () => { 
-        setCurrentExperience('PUBLIC'); 
-        scrollToSection('home'); 
-      } 
-    },
-    { 
-      id: 2, 
-      label: '2. Apply/Message Host', 
-      action: () => { 
-        onOpenApplyModal(); 
-      } 
-    },
-    { 
-      id: 3, 
-      label: '3. Login & roles', 
-      action: () => { 
-        setCurrentExperience('LOGIN'); 
-      } 
-    },
-    { 
-      id: 4, 
-      label: '4. Student dashboard', 
-      action: () => { 
-        setCurrentRole('STUDENT'); 
-        setCurrentExperience('LEARNING'); 
-      } 
-    },
-    { 
-      id: 5, 
-      label: '5. Lecturer portal', 
-      action: () => { 
-        setCurrentRole('LECTURER'); 
-        setCurrentExperience('LEARNING'); 
-      } 
-    },
-    { 
-      id: 6, 
-      label: '6. Mark as Read + progress', 
-      action: () => { 
-        setCurrentRole('STUDENT'); 
-        setCurrentExperience('LEARNING'); 
-      } 
-    },
-    { 
-      id: 7, 
-      label: '7. Doubts', 
-      action: () => { 
-        setCurrentRole('STUDENT'); 
-        setCurrentExperience('LEARNING'); 
-      } 
-    },
-    { 
-      id: 8, 
-      label: '8. Admin', 
-      action: () => { 
-        setCurrentRole('ADMIN'); 
-        setCurrentExperience('LEARNING'); 
-      } 
-    },
-    { 
-      id: 9, 
-      label: '9. Security/testing', 
-      action: () => { 
-        setCurrentRole('ADMIN'); 
-        setCurrentExperience('LEARNING'); 
-      } 
-    },
-    { 
-      id: 10, 
-      label: '10. Deployment', 
-      action: () => { 
-        setShowDeployModal(true); 
-      } 
-    }
-  ];
 
   // 12-STAGE USER JOURNEY LIFECYCLE HANDLERS
   // VISITOR → APPLY → HOST REVIEWS → ENROLL → STUDENT LOGIN → LEARN → MARK READ → BLUE TICK → PROGRESS % → ASK DOUBT → LECTURER ANSWERS → STUDENT CONTINUES
@@ -498,15 +408,26 @@ export const Header = ({ onOpenApplyModal, onOpenContactModal }) => {
           </button>
         </nav>
 
-        {/* Login & [ APPLY NOW ] Actions */}
+        {/* Login / Sign Out & [ APPLY NOW ] Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <button 
-            className="btn btn-secondary btn-sm"
-            onClick={() => setCurrentExperience('LOGIN')}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem' }}
-          >
-            <LogIn size={13} /> Login
-          </button>
+          {currentUser ? (
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={logout}
+              title="Sign out and lock application"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171' }}
+            >
+              <LogOut size={13} /> Sign Out
+            </button>
+          ) : (
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={() => setCurrentExperience('LOGIN')}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem' }}
+            >
+              <LogIn size={13} /> Login
+            </button>
+          )}
 
           <button 
             className="btn btn-primary"

@@ -3,12 +3,9 @@ import { useApp } from '../../context/AppContext';
 import { 
   Play, 
   CheckCircle, 
-  Circle, 
   FileText, 
   ExternalLink, 
-  MessageSquare, 
   Award, 
-  TrendingUp, 
   Clock, 
   BookOpen, 
   Send, 
@@ -33,13 +30,14 @@ export const StudentDashboard = () => {
     currentUser
   } = useApp();
 
-  const [activeCourseId, setActiveCourseId] = useState(courses[0]?.id || 'course-vlsi');
-  const activeCourse = courses.find(c => c.id === activeCourseId) || courses[0];
+  const safeCourses = Array.isArray(courses) ? courses : [];
+  const [activeCourseId, setActiveCourseId] = useState(safeCourses[0]?.id || 'course-vlsi');
+  const activeCourse = safeCourses.find(c => c?.id === activeCourseId) || safeCourses[0] || null;
 
-  // Active lesson inside selected course
-  const allCourseLessons = activeCourse ? activeCourse.modules.flatMap(m => m.lessons) : [];
+  // Active lesson inside selected course - defensively calculated
+  const allCourseLessons = (activeCourse?.modules || []).flatMap(m => Array.isArray(m?.lessons) ? m.lessons : []);
   const [activeLessonId, setActiveLessonId] = useState(allCourseLessons[0]?.id || 'vlsi-1');
-  const activeLesson = allCourseLessons.find(l => l.id === activeLessonId) || allCourseLessons[0];
+  const activeLesson = allCourseLessons.find(l => l?.id === activeLessonId) || allCourseLessons[0] || null;
 
   // Tab navigation inside Student view
   const [activeTab, setActiveTab] = useState('LEARN'); // 'LEARN' | 'DOUBTS' | 'ANNOUNCEMENTS' | 'PROGRESS'
@@ -50,20 +48,21 @@ export const StudentDashboard = () => {
   const [doubtSubmittedMsg, setDoubtSubmittedMsg] = useState(false);
 
   // Exact Formula: Completion % = (Read Items ÷ Total Published Items) × 100
+  const safeCompleted = Array.isArray(completedLessons) ? completedLessons : [];
   const totalLessonsCount = allCourseLessons.length;
-  const completedInThisCourse = allCourseLessons.filter(l => completedLessons.includes(l.id)).length;
+  const completedInThisCourse = allCourseLessons.filter(l => l?.id && safeCompleted.includes(l.id)).length;
   const progressPercent = totalLessonsCount > 0 ? Math.round((completedInThisCourse / totalLessonsCount) * 100) : 0;
-  const isLessonDone = activeLesson ? completedLessons.includes(activeLesson.id) : false;
+  const isLessonDone = activeLesson ? safeCompleted.includes(activeLesson.id) : false;
 
-  const courseAnnouncements = (announcements || []).filter(a => a.courseId === activeCourse?.id);
-  const courseDoubts = doubts.filter(d => d.courseId === activeCourse?.id);
+  const courseAnnouncements = (Array.isArray(announcements) ? announcements : []).filter(a => a?.courseId === activeCourse?.id);
+  const courseDoubts = (Array.isArray(doubts) ? doubts : []).filter(d => d?.courseId === activeCourse?.id);
 
   const handleAskDoubtSubmit = (e) => {
     e.preventDefault();
     if (!doubtQuestion.trim()) return;
 
     askDoubt({
-      courseId: activeCourse.id,
+      courseId: activeCourse?.id || 'course-vlsi',
       lessonId: activeLesson?.id || 'vlsi-6',
       lessonTitle: activeLesson?.title || '2.1 Half Adder & Full Adder Logic Derivations',
       topic: doubtTopic || 'Full Adder',
@@ -77,7 +76,7 @@ export const StudentDashboard = () => {
 
   const handleContinueLearning = () => {
     // Jump to the first uncompleted lesson
-    const nextUnread = allCourseLessons.find(l => !completedLessons.includes(l.id));
+    const nextUnread = allCourseLessons.find(l => !safeCompleted.includes(l.id));
     if (nextUnread) {
       setActiveLessonId(nextUnread.id);
     }
@@ -105,14 +104,15 @@ export const StudentDashboard = () => {
             value={activeCourseId}
             onChange={(e) => {
               setActiveCourseId(e.target.value);
-              const selectedC = courses.find(c => c.id === e.target.value);
-              if (selectedC && selectedC.modules[0]?.lessons[0]) {
-                setActiveLessonId(selectedC.modules[0].lessons[0].id);
+              const selectedC = safeCourses.find(c => c?.id === e.target.value);
+              const firstLes = (selectedC?.modules || []).flatMap(m => Array.isArray(m?.lessons) ? m.lessons : [])[0];
+              if (firstLes?.id) {
+                setActiveLessonId(firstLes.id);
               }
             }}
             style={{ width: '280px' }}
           >
-            {courses.map(c => (
+            {safeCourses.map(c => (
               <option key={c.id} value={c.id}>{c.title}</option>
             ))}
           </select>
@@ -322,14 +322,14 @@ export const StudentDashboard = () => {
 
               {/* Modules List */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto' }}>
-                {activeCourse?.modules.map((mod) => (
+                {(activeCourse?.modules || []).map((mod) => (
                   <div key={mod.id}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
                       {mod.title}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                      {mod.lessons.map((les) => {
+                      {(mod?.lessons || []).map((les) => {
                         const isDone = completedLessons.includes(les.id);
                         const isActive = les.id === activeLessonId;
 

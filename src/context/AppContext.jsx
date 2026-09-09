@@ -1,4 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { 
+  firebaseSignIn, 
+  firebaseSignUp, 
+  firebaseSignOut, 
+  subscribeToAuthChanges 
+} from '../config/firebase';
 
 const AppContext = createContext();
 
@@ -413,102 +419,217 @@ const initialCompletedLessons = [
   'les-1'
 ];
 
+// Helper to safely load and parse localStorage with fallback and validation
+const safeLoadStorage = (key, fallbackValue, validator) => {
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved || saved === 'undefined' || saved === 'null') {
+      return fallbackValue;
+    }
+    const parsed = JSON.parse(saved);
+    if (validator && !validator(parsed)) {
+      console.warn(`Invalid or malformed cached data for key "${key}", falling back to default.`);
+      return fallbackValue;
+    }
+    return parsed;
+  } catch (err) {
+    console.warn(`Error parsing localStorage key "${key}", falling back to default:`, err);
+    return fallbackValue;
+  }
+};
+
 export const AppProvider = ({ children }) => {
-  // Load state from LocalStorage or defaults
-  const [currentExperience, setCurrentExperience] = useState(() => localStorage.getItem('exp_view') || 'PUBLIC');
-  const [currentRole, setCurrentRole] = useState(() => localStorage.getItem('user_role') || 'STUDENT');
-  const [theme, setTheme] = useState(() => localStorage.getItem('app_theme') || 'dark');
+  // Load state from LocalStorage or defaults with defensive validation
+  const [currentExperience, setCurrentExperience] = useState(() => {
+    const val = localStorage.getItem('exp_view');
+    return ['PUBLIC', 'APPLICATION', 'LOGIN', 'LEARNING'].includes(val) ? val : 'PUBLIC';
+  });
+
+  const [currentRole, setCurrentRole] = useState(() => {
+    const val = localStorage.getItem('user_role');
+    return ['STUDENT', 'LECTURER', 'ADMIN'].includes(val) ? val : 'STUDENT';
+  });
+
+  const [theme, setTheme] = useState(() => {
+    const val = localStorage.getItem('app_theme');
+    return val === 'light' ? 'light' : 'dark';
+  });
   
+  const [registeredUsers, setRegisteredUsers] = useState(() => {
+    return safeLoadStorage('registered_users', demoUsers, (val) => Array.isArray(val) && val.length > 0);
+  });
+
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('current_user');
-    return saved ? JSON.parse(saved) : demoUsers[0];
+    const hasSession = localStorage.getItem('auth_session');
+    if (!hasSession) return null;
+    return safeLoadStorage('current_user', null, (val) => val && typeof val === 'object' && val.role);
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const hasSession = localStorage.getItem('auth_session');
+    const user = safeLoadStorage('current_user', null, (val) => val && typeof val === 'object' && val.role);
+    return !!(hasSession && user);
   });
   
   const [courses, setCourses] = useState(() => {
-    const saved = localStorage.getItem('courses_data');
-    return saved ? JSON.parse(saved) : initialCourses;
+    return safeLoadStorage('courses_data', initialCourses, (val) => Array.isArray(val) && val.length > 0 && Array.isArray(val[0]?.modules));
   });
 
   const [applications, setApplications] = useState(() => {
-    const saved = localStorage.getItem('apps_data');
-    return saved ? JSON.parse(saved) : initialApplications;
+    return safeLoadStorage('apps_data', initialApplications, (val) => Array.isArray(val));
   });
 
   const [doubts, setDoubts] = useState(() => {
-    const saved = localStorage.getItem('doubts_data');
-    return saved ? JSON.parse(saved) : initialDoubts;
+    return safeLoadStorage('doubts_data', initialDoubts, (val) => Array.isArray(val));
   });
 
   const [completedLessons, setCompletedLessons] = useState(() => {
-    const saved = localStorage.getItem('completed_lessons');
-    return saved ? JSON.parse(saved) : initialCompletedLessons;
+    return safeLoadStorage('completed_lessons', initialCompletedLessons, (val) => Array.isArray(val));
   });
 
   const [activityLogs, setActivityLogs] = useState(() => {
-    const saved = localStorage.getItem('activity_logs');
-    return saved ? JSON.parse(saved) : initialActivityLogs;
+    return safeLoadStorage('activity_logs', initialActivityLogs, (val) => Array.isArray(val));
   });
 
   const [announcements, setAnnouncements] = useState(() => {
-    const saved = localStorage.getItem('announcements_data');
-    return saved ? JSON.parse(saved) : initialAnnouncements;
+    return safeLoadStorage('announcements_data', initialAnnouncements, (val) => Array.isArray(val));
   });
 
   const [contactInquiries, setContactInquiries] = useState(() => {
-    const saved = localStorage.getItem('contact_inquiries');
-    return saved ? JSON.parse(saved) : [];
+    return safeLoadStorage('contact_inquiries', [], (val) => Array.isArray(val));
   });
 
   // Track user active application
-  const [userAppTrackingCode, setUserAppTrackingCode] = useState(() => localStorage.getItem('user_app_code') || 'APP-9081');
+  const [userAppTrackingCode, setUserAppTrackingCode] = useState(() => {
+    return localStorage.getItem('user_app_code') || 'APP-9081';
+  });
 
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('current_user', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('current_user');
+    try {
+      localStorage.setItem('registered_users', JSON.stringify(registeredUsers));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
     }
-  }, [currentUser]);
+  }, [registeredUsers]);
 
   useEffect(() => {
-    localStorage.setItem('exp_view', currentExperience);
+    try {
+      if (currentUser && isAuthenticated) {
+        localStorage.setItem('current_user', JSON.stringify(currentUser));
+        localStorage.setItem('auth_session', 'true');
+      } else {
+        localStorage.removeItem('current_user');
+        localStorage.removeItem('auth_session');
+      }
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
+  }, [currentUser, isAuthenticated]);
+
+  useEffect(() => {
+    // Listen to Firebase authentication status
+    const unsubscribe = subscribeToAuthChanges((fbUser) => {
+      if (fbUser) {
+        setCurrentUser(prev => {
+          if (prev && prev.email?.toLowerCase() === fbUser.email?.toLowerCase()) return prev;
+          const matched = registeredUsers.find(u => u.email.toLowerCase() === fbUser.email?.toLowerCase());
+          const role = matched ? matched.role : (fbUser.email?.includes('admin') ? 'ADMIN' : fbUser.email?.includes('lecturer') ? 'LECTURER' : 'STUDENT');
+          const userObj = {
+            id: fbUser.uid,
+            email: fbUser.email,
+            name: fbUser.displayName || matched?.name || fbUser.email.split('@')[0],
+            role: role,
+            title: matched?.title || `${role} Verified Member`,
+            avatar: (fbUser.displayName || fbUser.email).substring(0, 2).toUpperCase()
+          };
+          setIsAuthenticated(true);
+          setCurrentRole(role);
+          return userObj;
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [registeredUsers]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('exp_view', currentExperience);
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [currentExperience]);
 
   useEffect(() => {
-    localStorage.setItem('user_role', currentRole);
+    try {
+      localStorage.setItem('user_role', currentRole);
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [currentRole]);
 
   useEffect(() => {
-    localStorage.setItem('app_theme', theme);
-    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('app_theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('courses_data', JSON.stringify(courses));
+    try {
+      localStorage.setItem('courses_data', JSON.stringify(courses));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [courses]);
 
   useEffect(() => {
-    localStorage.setItem('apps_data', JSON.stringify(applications));
+    try {
+      localStorage.setItem('apps_data', JSON.stringify(applications));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [applications]);
 
   useEffect(() => {
-    localStorage.setItem('doubts_data', JSON.stringify(doubts));
+    try {
+      localStorage.setItem('doubts_data', JSON.stringify(doubts));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [doubts]);
 
   useEffect(() => {
-    localStorage.setItem('announcements_data', JSON.stringify(announcements));
+    try {
+      localStorage.setItem('announcements_data', JSON.stringify(announcements));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [announcements]);
 
   useEffect(() => {
-    localStorage.setItem('contact_inquiries', JSON.stringify(contactInquiries));
+    try {
+      localStorage.setItem('contact_inquiries', JSON.stringify(contactInquiries));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [contactInquiries]);
 
   useEffect(() => {
-    localStorage.setItem('completed_lessons', JSON.stringify(completedLessons));
+    try {
+      localStorage.setItem('completed_lessons', JSON.stringify(completedLessons));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [completedLessons]);
 
   useEffect(() => {
-    localStorage.setItem('activity_logs', JSON.stringify(activityLogs));
+    try {
+      localStorage.setItem('activity_logs', JSON.stringify(activityLogs));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
   }, [activityLogs]);
 
   // Actions
@@ -524,13 +645,14 @@ export const AppProvider = ({ children }) => {
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       actor: actor || currentRole
     };
-    setActivityLogs(prev => [newLog, ...prev]);
+    setActivityLogs(prev => [newLog, ...(Array.isArray(prev) ? prev : [])]);
   };
 
   const toggleLessonCompleted = (lessonId) => {
     setCompletedLessons(prev => {
-      const isDone = prev.includes(lessonId);
-      const next = isDone ? prev.filter(id => id !== lessonId) : [...prev, lessonId];
+      const list = Array.isArray(prev) ? prev : [];
+      const isDone = list.includes(lessonId);
+      const next = isDone ? list.filter(id => id !== lessonId) : [...list, lessonId];
       addLog('progress', `Lesson ${lessonId} marked as ${isDone ? 'Unread' : 'Read/Completed'}`, currentRole);
       return next;
     });
@@ -552,12 +674,12 @@ export const AppProvider = ({ children }) => {
       repliedAt: '',
       repliedBy: ''
     };
-    setDoubts(prev => [newDoubt, ...prev]);
+    setDoubts(prev => [newDoubt, ...(Array.isArray(prev) ? prev : [])]);
     addLog('doubt', `Student ${studentName} asked doubt on topic "${topic || 'Full Adder'}"`, studentName);
   };
 
   const answerDoubt = (doubtId, replyText) => {
-    setDoubts(prev => prev.map(d => {
+    setDoubts(prev => (Array.isArray(prev) ? prev : []).map(d => {
       if (d.id === doubtId) {
         return {
           ...d,
@@ -573,31 +695,44 @@ export const AppProvider = ({ children }) => {
   };
 
   const publishLesson = (courseId, moduleTitle, lessonObj) => {
-    setCourses(prev => prev.map(c => {
+    setCourses(prev => (Array.isArray(prev) ? prev : []).map(c => {
       if (c.id === courseId) {
-        // Find existing module or add new
-        const modIndex = c.modules.findIndex(m => m.title.toLowerCase().includes(moduleTitle.toLowerCase()));
-        let updatedModules = [...c.modules];
+        const modules = Array.isArray(c.modules) ? c.modules : [];
+        const modIndex = modules.findIndex(m => m.title && m.title.toLowerCase().includes(moduleTitle.toLowerCase()));
+        
         const newLesson = {
           id: `les-${Date.now()}`,
-          title: lessonObj.title,
+          title: lessonObj.title || 'Untitled Lesson',
           duration: lessonObj.duration || '15 min',
           videoUrl: lessonObj.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
           isSimulatedVideo: true,
           summary: lessonObj.summary || 'Newly published video lesson content.',
           pdfUrl: lessonObj.pdfUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
           pdfTitle: lessonObj.pdfTitle || 'Resource_Document.pdf',
-          resourceLinks: lessonObj.resourceLinks || []
+          resourceLinks: Array.isArray(lessonObj.resourceLinks) ? lessonObj.resourceLinks : []
         };
 
+        let updatedModules;
         if (modIndex >= 0) {
-          updatedModules[modIndex].lessons.push(newLesson);
-        } else {
-          updatedModules.push({
-            id: `mod-${Date.now()}`,
-            title: moduleTitle || 'New Module',
-            lessons: [newLesson]
+          updatedModules = modules.map((m, idx) => {
+            if (idx === modIndex) {
+              const currentLessons = Array.isArray(m.lessons) ? m.lessons : [];
+              return {
+                ...m,
+                lessons: [...currentLessons, newLesson]
+              };
+            }
+            return m;
           });
+        } else {
+          updatedModules = [
+            ...modules,
+            {
+              id: `mod-${Date.now()}`,
+              title: moduleTitle || 'New Module',
+              lessons: [newLesson]
+            }
+          ];
         }
 
         return { ...c, modules: updatedModules };
@@ -605,7 +740,7 @@ export const AppProvider = ({ children }) => {
       return c;
     }));
 
-    addLog('content', `Published new lesson "${lessonObj.title}" in course`, 'Lecturer');
+    addLog('content', `Published new lesson "${lessonObj.title || 'Untitled'}" in course`, 'Lecturer');
   };
 
   const submitApplication = (appData) => {
@@ -666,34 +801,125 @@ export const AppProvider = ({ children }) => {
     addLog('contact', `Contact message from ${contactData.name}: "${contactData.subject}"`, contactData.name);
   };
 
-  const loginWithCredentials = (email, password) => {
-    const found = demoUsers.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+  const loginWithCredentials = async (email, password) => {
+    const safeEmail = (email || '').trim().toLowerCase();
+    const safePass = (password || '').trim();
+
+    // 1. Check verified registered / demo user credentials
+    const found = registeredUsers.find(u => u.email.toLowerCase() === safeEmail);
     if (found) {
+      if (found.password && found.password !== safePass) {
+        return { success: false, error: 'Incorrect password for this account.' };
+      }
       setCurrentUser(found);
       setCurrentRole(found.role);
+      setIsAuthenticated(true);
       addLog('auth', `User ${found.name} signed in successfully with role ${found.role}`, found.role);
+
+      // Background sync with Firebase if available
+      try {
+        await firebaseSignIn(safeEmail, safePass);
+      } catch (fbSyncErr) {
+        console.info('Firebase auth note:', fbSyncErr.message);
+      }
+
       return { success: true, user: found, role: found.role };
     }
-    // Fallback demo matching for any input
-    const fallbackRole = email.includes('admin') ? 'ADMIN' : (email.includes('lecturer') ? 'LECTURER' : 'STUDENT');
-    const fallbackUser = {
-      id: `usr-${Date.now()}`,
-      email,
-      name: email.split('@')[0],
-      role: fallbackRole,
-      title: 'Authenticated Platform User',
-      avatar: email.substring(0, 2).toUpperCase()
-    };
-    setCurrentUser(fallbackUser);
-    setCurrentRole(fallbackRole);
-    addLog('auth', `User ${fallbackUser.name} signed in with role ${fallbackRole}`, fallbackRole);
-    return { success: true, user: fallbackUser, role: fallbackRole };
+
+    // 2. Attempt direct Firebase Authentication
+    try {
+      const fbUser = await firebaseSignIn(safeEmail, safePass);
+      const role = safeEmail.includes('admin') ? 'ADMIN' : (safeEmail.includes('lecturer') ? 'LECTURER' : 'STUDENT');
+      const verifiedUser = {
+        id: fbUser.uid,
+        email: fbUser.email,
+        name: fbUser.displayName || safeEmail.split('@')[0],
+        role: role,
+        title: `${role} Verified User`,
+        avatar: safeEmail.substring(0, 2).toUpperCase()
+      };
+      setCurrentUser(verifiedUser);
+      setCurrentRole(role);
+      setIsAuthenticated(true);
+      addLog('auth', `Firebase user ${verifiedUser.name} signed in with role ${role}`, role);
+      return { success: true, user: verifiedUser, role };
+    } catch (fbError) {
+      console.warn('Firebase login attempt:', fbError.code, fbError.message);
+
+      if (fbError.code === 'auth/invalid-credential' || fbError.code === 'auth/wrong-password' || fbError.code === 'auth/user-not-found') {
+        return { 
+          success: false, 
+          error: 'Invalid credentials. Please verify your email and password, or create a new account.' 
+        };
+      }
+
+      // 3. Fallback matching for demo evaluation
+      const fallbackRole = safeEmail.includes('admin') ? 'ADMIN' : (safeEmail.includes('lecturer') ? 'LECTURER' : 'STUDENT');
+      const fallbackUser = {
+        id: `usr-${Date.now()}`,
+        email: safeEmail,
+        name: safeEmail.split('@')[0],
+        role: fallbackRole,
+        title: 'Authenticated Platform User',
+        avatar: safeEmail.substring(0, 2).toUpperCase()
+      };
+      setCurrentUser(fallbackUser);
+      setCurrentRole(fallbackRole);
+      setIsAuthenticated(true);
+      addLog('auth', `User ${fallbackUser.name} signed in with role ${fallbackRole}`, fallbackRole);
+      return { success: true, user: fallbackUser, role: fallbackRole };
+    }
   };
 
-  const logout = () => {
+  const registerWithCredentials = async ({ name, email, password, role = 'STUDENT' }) => {
+    const safeEmail = (email || '').trim().toLowerCase();
+    const safePass = (password || '').trim();
+    const safeName = (name || '').trim() || safeEmail.split('@')[0];
+
+    // Check if account already exists
+    if (registeredUsers.some(u => u.email.toLowerCase() === safeEmail)) {
+      return { success: false, error: 'An account with this email address already exists.' };
+    }
+
+    let uid = `usr-${Date.now()}`;
+    // Attempt Firebase registration
+    try {
+      const fbUser = await firebaseSignUp(safeEmail, safePass, safeName);
+      if (fbUser?.uid) uid = fbUser.uid;
+    } catch (fbErr) {
+      console.warn('Firebase registration notice:', fbErr.message);
+    }
+
+    const newUser = {
+      id: uid,
+      email: safeEmail,
+      password: safePass,
+      name: safeName,
+      role: role,
+      title: role === 'LECTURER' ? 'Silicon & AI Faculty' : (role === 'ADMIN' ? 'Platform Administrator' : 'Enrolled Student'),
+      avatar: safeName.substring(0, 2).toUpperCase()
+    };
+
+    setRegisteredUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+    setCurrentRole(role);
+    setIsAuthenticated(true);
+    addLog('auth', `New ${role} account registered for ${safeName}`, role);
+    return { success: true, user: newUser, role };
+  };
+
+  const logout = async () => {
+    try {
+      await firebaseSignOut();
+    } catch (e) {
+      console.warn('Firebase logout notice:', e);
+    }
     setCurrentUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('auth_session');
+    localStorage.removeItem('current_user');
     setCurrentExperience('LOGIN');
-    addLog('auth', 'User logged out', currentRole);
+    addLog('auth', 'User signed out from platform', currentRole);
   };
 
   const resetDemoData = () => {
@@ -704,7 +930,9 @@ export const AppProvider = ({ children }) => {
     setCompletedLessons(['les-1']);
     setActivityLogs(initialActivityLogs);
     setContactInquiries([]);
-    setCurrentUser(demoUsers[0]);
+    setRegisteredUsers(demoUsers);
+    setCurrentUser(null);
+    setIsAuthenticated(false);
     localStorage.clear();
     addLog('system', 'Platform demo data reset to seed state', 'Admin');
   };
@@ -717,6 +945,8 @@ export const AppProvider = ({ children }) => {
       setCurrentRole,
       currentUser,
       demoUsers,
+      registeredUsers,
+      isAuthenticated,
       theme,
       toggleTheme,
       courses,
@@ -737,6 +967,7 @@ export const AppProvider = ({ children }) => {
       submitApplication,
       updateApplicationStatus,
       loginWithCredentials,
+      registerWithCredentials,
       logout,
       resetDemoData
     }}>
